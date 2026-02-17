@@ -23,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body style={{ backgroundColor: '#0A0A0A', color: '#F5F0E8' }}>
+      <body style={{ backgroundColor: '#0A0A0A', color: '#F5F0E8' }} suppressHydrationWarning>
         {children}
       </body>
     </html>
