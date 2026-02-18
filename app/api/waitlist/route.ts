@@ -205,15 +205,13 @@
 
 import { NextRequest } from 'next/server';
 
-// Simple in-memory storage (emails will persist during one deployment)
 const waitlistEmails = new Map<string, { position: number; timestamp: number }>();
-let counter = 247; // Starting count for social proof
+let counter = 247;
 
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
 
-    // Validation
     if (!email || !email.includes('@')) {
       return Response.json({ 
         error: 'Please enter a valid email address' 
@@ -222,14 +220,12 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if already signed up
     if (waitlistEmails.has(normalizedEmail)) {
       return Response.json({ 
         error: 'You\'re already on the list! Check your email.' 
       }, { status: 400 });
     }
 
-    // Increment counter and add to list
     counter++;
     const position = counter;
     waitlistEmails.set(normalizedEmail, {
@@ -248,7 +244,7 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Shadow Board AI <onboarding@resend.dev>',
+          from: 'Shadow Board AI <hifzazafar116@gmail.com>', // ✅ CHANGED
           to: normalizedEmail,
           subject: "You're on the Shadow Board waitlist! 🎯",
           html: `
@@ -257,14 +253,55 @@ export async function POST(req: NextRequest) {
             <head>
               <meta charset="utf-8">
               <style>
-                body { font-family: 'Courier New', monospace; background: #0A0A0A; color: #F5F0E8; padding: 40px 20px; }
-                .container { max-width: 600px; margin: 0 auto; background: #1A1A1A; border: 2px solid #FF2D20; padding: 40px; }
-                h1 { color: #FF2D20; font-size: 2.5rem; margin-bottom: 20px; letter-spacing: 0.1em; }
-                .position { font-size: 1.5rem; color: #FF2D20; font-weight: bold; }
-                ul { margin: 20px 0; padding-left: 20px; }
-                li { margin: 10px 0; line-height: 1.6; }
-                .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #2A2A2A; font-size: 0.9rem; color: #888; }
-                strong { color: #F5F0E8; }
+                body { 
+                  font-family: 'Courier New', monospace; 
+                  background: #0A0A0A; 
+                  color: #F5F0E8; 
+                  padding: 20px;
+                  margin: 0;
+                }
+                .container { 
+                  max-width: 600px; 
+                  margin: 0 auto; 
+                  background: #1A1A1A; 
+                  border: 2px solid #FF2D20; 
+                  padding: 32px;
+                }
+                h1 { 
+                  color: #FF2D20; 
+                  font-size: 2.5rem; 
+                  margin-bottom: 20px; 
+                  letter-spacing: 0.1em;
+                  font-family: Arial, sans-serif;
+                  font-weight: bold;
+                }
+                .position { 
+                  font-size: 1.5rem; 
+                  color: #FF2D20; 
+                  font-weight: bold; 
+                  margin: 20px 0;
+                }
+                ul { 
+                  margin: 20px 0; 
+                  padding-left: 20px; 
+                }
+                li { 
+                  margin: 12px 0; 
+                  line-height: 1.6; 
+                }
+                .footer { 
+                  margin-top: 30px; 
+                  padding-top: 20px; 
+                  border-top: 1px solid #2A2A2A; 
+                  font-size: 0.9rem; 
+                  color: #888; 
+                }
+                strong { 
+                  color: #F5F0E8; 
+                }
+                a {
+                  color: #FF2D20;
+                }
               </style>
             </head>
             <body>
@@ -275,7 +312,7 @@ export async function POST(req: NextRequest) {
                 
                 <p class="position">Your position: #${position}</p>
                 
-                <h2 style="color: #F5F0E8; margin-top: 30px;">What happens next:</h2>
+                <h2 style="color: #F5F0E8; margin-top: 30px; font-size: 1.3rem;">What happens next:</h2>
                 <ul>
                   <li><strong>Within 48 hours:</strong> We launch Shadow Board AI</li>
                   <li><strong>You get instant access:</strong> We'll email you the moment we go live</li>
@@ -284,16 +321,16 @@ export async function POST(req: NextRequest) {
                   <li><strong>Exclusive features:</strong> Action plan generator + weekly trends</li>
                 </ul>
                 
-                <p style="margin-top: 30px;">
+                <p style="margin-top: 30px; font-size: 1.1rem;">
                   Get ready to see what you're <strong>actually</strong> manifesting.
-                  The data doesn't lie 🔥
+                  <br>The data doesn't lie 🔥
                 </p>
                 
                 <div class="footer">
-                  <p>P.S. Only the first 100 people get founding member pricing. You're locked in.</p>
-                  <p style="margin-top: 10px; font-size: 0.8rem; color: #666;">
+                  <p><strong>P.S.</strong> Only the first 100 people get founding member pricing. You're locked in.</p>
+                  <p style="margin-top: 15px; font-size: 0.85rem; color: #666;">
                     Questions? Just reply to this email.<br>
-                    Built in public by @hifzazafar
+                    Follow the build: <a href="https://x.com/hifzazafar17">@hifzazafar17</a>
                   </p>
                 </div>
               </div>
@@ -303,14 +340,15 @@ export async function POST(req: NextRequest) {
         }),
       });
 
+      const responseData = await userEmailResponse.json();
+
       if (!userEmailResponse.ok) {
-        console.error('Failed to send user email:', await userEmailResponse.text());
+        console.error('❌ Failed to send user email:', responseData);
       } else {
         console.log(`📧 Confirmation email sent to ${normalizedEmail}`);
       }
     } catch (emailError) {
-      console.error('Email sending error:', emailError);
-      // Don't fail the whole request if email fails
+      console.error('❌ Email sending error:', emailError);
     }
 
     // Send notification email to YOU
@@ -322,23 +360,26 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Shadow Board Alerts <onboarding@resend.dev>',
-          to: 'hifzazafar116@gmail.com', // 👈 CHANGE THIS TO YOUR REAL EMAIL
+          from: 'hifzazafar116@gmail.com', // ✅ CHANGED
+          to: 'hifzazafar116@gmail.com',
           subject: `🎯 New Waitlist Signup (#${position})`,
           html: `
-            <div style="font-family: monospace;">
-              <h2>New Shadow Board Waitlist Signup</h2>
+            <div style="font-family: monospace; padding: 20px; background: #f5f5f5;">
+              <h2 style="color: #FF2D20;">New Shadow Board Waitlist Signup</h2>
               <p><strong>Email:</strong> ${normalizedEmail}</p>
               <p><strong>Position:</strong> #${position}</p>
               <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
               <p><strong>Total signups:</strong> ${waitlistEmails.size}</p>
+              <hr>
+              <p style="color: #666; font-size: 0.9rem;">
+                View all logs: <a href="https://resend.com/logs">resend.com/logs</a>
+              </p>
             </div>
           `,
         }),
       });
     } catch (notifyError) {
-      console.error('Failed to send notification email:', notifyError);
-      // Don't fail if notification fails
+      console.error('Failed to send notification:', notifyError);
     }
 
     return Response.json({
@@ -355,7 +396,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Optional: GET endpoint to check waitlist count
 export async function GET() {
   return Response.json({
     count: counter,
