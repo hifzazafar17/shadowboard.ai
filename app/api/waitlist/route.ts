@@ -202,7 +202,6 @@
 
 
 
-
 import { NextRequest } from 'next/server';
 
 const waitlistEmails = new Map<string, { position: number; timestamp: number }>();
@@ -235,103 +234,82 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ New waitlist signup: ${normalizedEmail} (Position #${position})`);
 
+    // ✅ FIX: Use Resend's proper test domain
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    
+    if (!RESEND_API_KEY) {
+      console.error('❌ RESEND_API_KEY not found');
+      return Response.json({ success: true, position }); // Still return success to user
+    }
+
     // Send confirmation email to USER
     try {
       const userEmailResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Shadow Board AI <hifzazafar116@gmail.com>', // ✅ CHANGED
+          from: 'delivered@resend.dev', // ✅ Use this instead
           to: normalizedEmail,
           subject: "You're on the Shadow Board waitlist! 🎯",
           html: `
             <!DOCTYPE html>
             <html>
-            <head>
-              <meta charset="utf-8">
-              <style>
-                body { 
-                  font-family: 'Courier New', monospace; 
-                  background: #0A0A0A; 
-                  color: #F5F0E8; 
-                  padding: 20px;
-                  margin: 0;
-                }
-                .container { 
-                  max-width: 600px; 
-                  margin: 0 auto; 
-                  background: #1A1A1A; 
-                  border: 2px solid #FF2D20; 
-                  padding: 32px;
-                }
-                h1 { 
-                  color: #FF2D20; 
-                  font-size: 2.5rem; 
-                  margin-bottom: 20px; 
-                  letter-spacing: 0.1em;
-                  font-family: Arial, sans-serif;
-                  font-weight: bold;
-                }
-                .position { 
-                  font-size: 1.5rem; 
-                  color: #FF2D20; 
-                  font-weight: bold; 
-                  margin: 20px 0;
-                }
-                ul { 
-                  margin: 20px 0; 
-                  padding-left: 20px; 
-                }
-                li { 
-                  margin: 12px 0; 
-                  line-height: 1.6; 
-                }
-                .footer { 
-                  margin-top: 30px; 
-                  padding-top: 20px; 
-                  border-top: 1px solid #2A2A2A; 
-                  font-size: 0.9rem; 
-                  color: #888; 
-                }
-                strong { 
-                  color: #F5F0E8; 
-                }
-                a {
-                  color: #FF2D20;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <h1>YOU'RE IN!</h1>
-                
-                <p>Thanks for joining the Shadow Board AI waitlist.</p>
-                
-                <p class="position">Your position: #${position}</p>
-                
-                <h2 style="color: #F5F0E8; margin-top: 30px; font-size: 1.3rem;">What happens next:</h2>
-                <ul>
-                  <li><strong>Within 48 hours:</strong> We launch Shadow Board AI</li>
-                  <li><strong>You get instant access:</strong> We'll email you the moment we go live</li>
-                  <li><strong>Your founding member perks:</strong> Lifetime 70% discount locked in ($9 vs $29/month)</li>
-                  <li><strong>Unlimited analyses:</strong> As many shadow boards as you want</li>
-                  <li><strong>Exclusive features:</strong> Action plan generator + weekly trends</li>
-                </ul>
-                
-                <p style="margin-top: 30px; font-size: 1.1rem;">
-                  Get ready to see what you're <strong>actually</strong> manifesting.
-                  <br>The data doesn't lie 🔥
-                </p>
-                
-                <div class="footer">
-                  <p><strong>P.S.</strong> Only the first 100 people get founding member pricing. You're locked in.</p>
-                  <p style="margin-top: 15px; font-size: 0.85rem; color: #666;">
-                    Questions? Just reply to this email.<br>
-                    Follow the build: <a href="https://x.com/hifzazafar17">@hifzazafar17</a>
+            <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #0A0A0A;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+                <div style="background: #1A1A1A; border: 2px solid #FF2D20; padding: 40px;">
+                  
+                  <h1 style="color: #FF2D20; font-size: 2.5rem; margin: 0 0 20px 0; letter-spacing: 0.1em;">
+                    YOU'RE IN!
+                  </h1>
+                  
+                  <p style="color: #F5F0E8; font-size: 1.1rem; margin-bottom: 10px;">
+                    Thanks for joining the Shadow Board AI waitlist.
                   </p>
+                  
+                  <p style="color: #FF2D20; font-size: 1.8rem; font-weight: bold; margin: 30px 0;">
+                    Your position: #${position}
+                  </p>
+                  
+                  <h2 style="color: #F5F0E8; margin-top: 40px; margin-bottom: 20px; font-size: 1.3rem;">
+                    What happens next:
+                  </h2>
+                  
+                  <ul style="color: #F5F0E8; line-height: 1.8; padding-left: 20px;">
+                    <li style="margin-bottom: 15px;">
+                      <strong>Within 48 hours:</strong> We launch Shadow Board AI
+                    </li>
+                    <li style="margin-bottom: 15px;">
+                      <strong>You get instant access:</strong> We'll email you the moment we go live
+                    </li>
+                    <li style="margin-bottom: 15px;">
+                      <strong>Your founding member perks:</strong> Lifetime 70% discount locked in ($9 vs $29/month)
+                    </li>
+                    <li style="margin-bottom: 15px;">
+                      <strong>Unlimited analyses:</strong> As many shadow boards as you want
+                    </li>
+                    <li style="margin-bottom: 15px;">
+                      <strong>Exclusive features:</strong> Action plan generator + weekly trends
+                    </li>
+                  </ul>
+                  
+                  <p style="color: #F5F0E8; margin-top: 40px; font-size: 1.1rem;">
+                    Get ready to see what you're <strong>actually</strong> manifesting.
+                    <br>The data doesn't lie 🔥
+                  </p>
+                  
+                  <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #2A2A2A;">
+                    <p style="color: #888; font-size: 0.95rem; margin-bottom: 15px;">
+                      <strong>P.S.</strong> Only the first 100 people get founding member pricing. You're locked in.
+                    </p>
+                    <p style="color: #666; font-size: 0.85rem;">
+                      Questions? Just reply to this email.<br>
+                      Follow the build: <a href="https://x.com/hifzazafar17" style="color: #FF2D20;">@hifzazafar17</a>
+                    </p>
+                  </div>
+                  
                 </div>
               </div>
             </body>
@@ -356,30 +334,32 @@ export async function POST(req: NextRequest) {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'hifzazafar116@gmail.com', // ✅ CHANGED
-          to: 'hifzazafar116@gmail.com',
+          from: 'delivered@resend.dev', // ✅ Use this
+          to: 'hifzazafar116@gmail.com', // ✅ Your email to receive notifications
           subject: `🎯 New Waitlist Signup (#${position})`,
           html: `
-            <div style="font-family: monospace; padding: 20px; background: #f5f5f5;">
-              <h2 style="color: #FF2D20;">New Shadow Board Waitlist Signup</h2>
-              <p><strong>Email:</strong> ${normalizedEmail}</p>
-              <p><strong>Position:</strong> #${position}</p>
-              <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-              <p><strong>Total signups:</strong> ${waitlistEmails.size}</p>
-              <hr>
+            <div style="font-family: Arial, sans-serif; padding: 30px; background: #f5f5f5;">
+              <h2 style="color: #FF2D20; margin-top: 0;">New Shadow Board Waitlist Signup</h2>
+              <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                <p style="margin: 10px 0;"><strong>Email:</strong> ${normalizedEmail}</p>
+                <p style="margin: 10px 0;"><strong>Position:</strong> #${position}</p>
+                <p style="margin: 10px 0;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                <p style="margin: 10px 0;"><strong>Total signups:</strong> ${waitlistEmails.size}</p>
+              </div>
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
               <p style="color: #666; font-size: 0.9rem;">
-                View all logs: <a href="https://resend.com/logs">resend.com/logs</a>
+                View all logs: <a href="https://resend.com/logs" style="color: #FF2D20;">resend.com/logs</a>
               </p>
             </div>
           `,
         }),
       });
     } catch (notifyError) {
-      console.error('Failed to send notification:', notifyError);
+      console.error('❌ Failed to send notification:', notifyError);
     }
 
     return Response.json({
@@ -389,7 +369,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err) {
-    console.error('Waitlist API error:', err);
+    console.error('❌ Waitlist API error:', err);
     return Response.json({
       error: 'Something went wrong. Please try again.'
     }, { status: 500 });
