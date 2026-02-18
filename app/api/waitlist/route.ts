@@ -201,16 +201,17 @@
 
 
 
-
 import { NextRequest } from 'next/server';
 
-const waitlistEmails = new Map<string, { position: number; timestamp: number }>();
+// Simple in-memory storage (resets on redeploy, but good enough for launch)
+const waitlistEmails = new Map<string, { position: number; timestamp: number; email: string }>();
 let counter = 247;
 
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
 
+    // Validation
     if (!email || !email.includes('@')) {
       return Response.json({ 
         error: 'Please enter a valid email address' 
@@ -219,166 +220,53 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Check duplicates
     if (waitlistEmails.has(normalizedEmail)) {
       return Response.json({ 
-        error: 'You\'re already on the list! Check your email.' 
+        error: 'You\'re already on the list!' 
       }, { status: 400 });
     }
 
+    // Add to waitlist
     counter++;
     const position = counter;
+    const timestamp = Date.now();
+    
     waitlistEmails.set(normalizedEmail, {
       position,
-      timestamp: Date.now(),
+      timestamp,
+      email: normalizedEmail,
     });
 
-    console.log(`✅ New waitlist signup: ${normalizedEmail} (Position #${position})`);
-
-    // ✅ FIX: Use Resend's proper test domain
-    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    // ✅ Log to Vercel console (you can see in deployment logs)
+    console.log(`✅ NEW SIGNUP #${position}: ${normalizedEmail} at ${new Date(timestamp).toISOString()}`);
     
-    if (!RESEND_API_KEY) {
-      console.error('❌ RESEND_API_KEY not found');
-      return Response.json({ success: true, position }); // Still return success to user
-    }
-
-    // Send confirmation email to USER
-    try {
-      const userEmailResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'delivered@resend.dev', // ✅ Use this instead
-          to: normalizedEmail,
-          subject: "You're on the Shadow Board waitlist! 🎯",
-          html: `
-            <!DOCTYPE html>
-            <html>
-            <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #0A0A0A;">
-              <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-                <div style="background: #1A1A1A; border: 2px solid #FF2D20; padding: 40px;">
-                  
-                  <h1 style="color: #FF2D20; font-size: 2.5rem; margin: 0 0 20px 0; letter-spacing: 0.1em;">
-                    YOU'RE IN!
-                  </h1>
-                  
-                  <p style="color: #F5F0E8; font-size: 1.1rem; margin-bottom: 10px;">
-                    Thanks for joining the Shadow Board AI waitlist.
-                  </p>
-                  
-                  <p style="color: #FF2D20; font-size: 1.8rem; font-weight: bold; margin: 30px 0;">
-                    Your position: #${position}
-                  </p>
-                  
-                  <h2 style="color: #F5F0E8; margin-top: 40px; margin-bottom: 20px; font-size: 1.3rem;">
-                    What happens next:
-                  </h2>
-                  
-                  <ul style="color: #F5F0E8; line-height: 1.8; padding-left: 20px;">
-                    <li style="margin-bottom: 15px;">
-                      <strong>Within 48 hours:</strong> We launch Shadow Board AI
-                    </li>
-                    <li style="margin-bottom: 15px;">
-                      <strong>You get instant access:</strong> We'll email you the moment we go live
-                    </li>
-                    <li style="margin-bottom: 15px;">
-                      <strong>Your founding member perks:</strong> Lifetime 70% discount locked in ($9 vs $29/month)
-                    </li>
-                    <li style="margin-bottom: 15px;">
-                      <strong>Unlimited analyses:</strong> As many shadow boards as you want
-                    </li>
-                    <li style="margin-bottom: 15px;">
-                      <strong>Exclusive features:</strong> Action plan generator + weekly trends
-                    </li>
-                  </ul>
-                  
-                  <p style="color: #F5F0E8; margin-top: 40px; font-size: 1.1rem;">
-                    Get ready to see what you're <strong>actually</strong> manifesting.
-                    <br>The data doesn't lie 🔥
-                  </p>
-                  
-                  <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #2A2A2A;">
-                    <p style="color: #888; font-size: 0.95rem; margin-bottom: 15px;">
-                      <strong>P.S.</strong> Only the first 100 people get founding member pricing. You're locked in.
-                    </p>
-                    <p style="color: #666; font-size: 0.85rem;">
-                      Questions? Just reply to this email.<br>
-                      Follow the build: <a href="https://x.com/hifzazafar17" style="color: #FF2D20;">@hifzazafar17</a>
-                    </p>
-                  </div>
-                  
-                </div>
-              </div>
-            </body>
-            </html>
-          `,
-        }),
-      });
-
-      const responseData = await userEmailResponse.json();
-
-      if (!userEmailResponse.ok) {
-        console.error('❌ Failed to send user email:', responseData);
-      } else {
-        console.log(`📧 Confirmation email sent to ${normalizedEmail}`);
-      }
-    } catch (emailError) {
-      console.error('❌ Email sending error:', emailError);
-    }
-
-    // Send notification email to YOU
-    try {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'delivered@resend.dev', // ✅ Use this
-          to: 'hifzazafar116@gmail.com', // ✅ Your email to receive notifications
-          subject: `🎯 New Waitlist Signup (#${position})`,
-          html: `
-            <div style="font-family: Arial, sans-serif; padding: 30px; background: #f5f5f5;">
-              <h2 style="color: #FF2D20; margin-top: 0;">New Shadow Board Waitlist Signup</h2>
-              <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
-                <p style="margin: 10px 0;"><strong>Email:</strong> ${normalizedEmail}</p>
-                <p style="margin: 10px 0;"><strong>Position:</strong> #${position}</p>
-                <p style="margin: 10px 0;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-                <p style="margin: 10px 0;"><strong>Total signups:</strong> ${waitlistEmails.size}</p>
-              </div>
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-              <p style="color: #666; font-size: 0.9rem;">
-                View all logs: <a href="https://resend.com/logs" style="color: #FF2D20;">resend.com/logs</a>
-              </p>
-            </div>
-          `,
-        }),
-      });
-    } catch (notifyError) {
-      console.error('❌ Failed to send notification:', notifyError);
-    }
+    // 📊 Print current list (so you don't lose data)
+    console.log(`📊 Total signups: ${waitlistEmails.size}`);
+    console.log('Current waitlist:', Array.from(waitlistEmails.values()));
 
     return Response.json({
       success: true,
       position,
-      message: 'Check your email for confirmation!',
+      total: waitlistEmails.size,
     });
 
   } catch (err) {
-    console.error('❌ Waitlist API error:', err);
+    console.error('❌ Waitlist error:', err);
     return Response.json({
       error: 'Something went wrong. Please try again.'
     }, { status: 500 });
   }
 }
 
+// GET endpoint to see stats
 export async function GET() {
   return Response.json({
     count: counter,
     signups: waitlistEmails.size,
+    emails: Array.from(waitlistEmails.values()).map(e => ({
+      email: e.email,
+      position: e.position,
+    })),
   });
 }
