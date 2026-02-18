@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.74.0",
     "@supabase/supabase-js": "^2.96.0",
     "next": "16.1.6",
+    "node-fetch": "^3.3.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-dropzone": "^15.0.0"

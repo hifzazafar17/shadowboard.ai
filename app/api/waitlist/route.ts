@@ -203,12 +203,11 @@
 
 
 
-
 import { NextRequest } from 'next/server';
 
-// Simple in-memory storage (replace with Supabase when you have it)
-const waitlist = new Map<string, { email: string; timestamp: number; position: number }>();
-let counter = 247; // Start at 247 for social proof
+// Simple in-memory storage (emails will persist during one deployment)
+const waitlistEmails = new Map<string, { position: number; timestamp: number }>();
+let counter = 247; // Starting count for social proof
 
 export async function POST(req: NextRequest) {
   try {
@@ -216,50 +215,150 @@ export async function POST(req: NextRequest) {
 
     // Validation
     if (!email || !email.includes('@')) {
-      return Response.json({ error: 'Please enter a valid email' }, { status: 400 });
+      return Response.json({ 
+        error: 'Please enter a valid email address' 
+      }, { status: 400 });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check if already signed up
-    if (waitlist.has(normalizedEmail)) {
-      return Response.json({
-        error: 'You\'re already on the list! Check your email.'
+    if (waitlistEmails.has(normalizedEmail)) {
+      return Response.json({ 
+        error: 'You\'re already on the list! Check your email.' 
       }, { status: 400 });
     }
 
-    // Add to waitlist
+    // Increment counter and add to list
     counter++;
-    waitlist.set(normalizedEmail, {
-      email: normalizedEmail,
+    const position = counter;
+    waitlistEmails.set(normalizedEmail, {
+      position,
       timestamp: Date.now(),
-      position: counter,
     });
 
-    // Log it (you'll see in Vercel logs)
-    console.log(`New signup: ${normalizedEmail} (Position: ${counter})`);
+    console.log(`✅ New waitlist signup: ${normalizedEmail} (Position #${position})`);
 
-    // TODO: Send welcome email via Resend/SendGrid
-    // TODO: Add to Supabase for persistence
+    // Send confirmation email to USER
+    try {
+      const userEmailResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Shadow Board AI <onboarding@resend.dev>',
+          to: normalizedEmail,
+          subject: "You're on the Shadow Board waitlist! 🎯",
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: 'Courier New', monospace; background: #0A0A0A; color: #F5F0E8; padding: 40px 20px; }
+                .container { max-width: 600px; margin: 0 auto; background: #1A1A1A; border: 2px solid #FF2D20; padding: 40px; }
+                h1 { color: #FF2D20; font-size: 2.5rem; margin-bottom: 20px; letter-spacing: 0.1em; }
+                .position { font-size: 1.5rem; color: #FF2D20; font-weight: bold; }
+                ul { margin: 20px 0; padding-left: 20px; }
+                li { margin: 10px 0; line-height: 1.6; }
+                .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #2A2A2A; font-size: 0.9rem; color: #888; }
+                strong { color: #F5F0E8; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>YOU'RE IN!</h1>
+                
+                <p>Thanks for joining the Shadow Board AI waitlist.</p>
+                
+                <p class="position">Your position: #${position}</p>
+                
+                <h2 style="color: #F5F0E8; margin-top: 30px;">What happens next:</h2>
+                <ul>
+                  <li><strong>Within 48 hours:</strong> We launch Shadow Board AI</li>
+                  <li><strong>You get instant access:</strong> We'll email you the moment we go live</li>
+                  <li><strong>Your founding member perks:</strong> Lifetime 70% discount locked in ($9 vs $29/month)</li>
+                  <li><strong>Unlimited analyses:</strong> As many shadow boards as you want</li>
+                  <li><strong>Exclusive features:</strong> Action plan generator + weekly trends</li>
+                </ul>
+                
+                <p style="margin-top: 30px;">
+                  Get ready to see what you're <strong>actually</strong> manifesting.
+                  The data doesn't lie 🔥
+                </p>
+                
+                <div class="footer">
+                  <p>P.S. Only the first 100 people get founding member pricing. You're locked in.</p>
+                  <p style="margin-top: 10px; font-size: 0.8rem; color: #666;">
+                    Questions? Just reply to this email.<br>
+                    Built in public by @hifzazafar
+                  </p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `,
+        }),
+      });
+
+      if (!userEmailResponse.ok) {
+        console.error('Failed to send user email:', await userEmailResponse.text());
+      } else {
+        console.log(`📧 Confirmation email sent to ${normalizedEmail}`);
+      }
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // Don't fail the whole request if email fails
+    }
+
+    // Send notification email to YOU
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Shadow Board Alerts <onboarding@resend.dev>',
+          to: 'hifzazafar116@gmail.com', // 👈 CHANGE THIS TO YOUR REAL EMAIL
+          subject: `🎯 New Waitlist Signup (#${position})`,
+          html: `
+            <div style="font-family: monospace;">
+              <h2>New Shadow Board Waitlist Signup</h2>
+              <p><strong>Email:</strong> ${normalizedEmail}</p>
+              <p><strong>Position:</strong> #${position}</p>
+              <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+              <p><strong>Total signups:</strong> ${waitlistEmails.size}</p>
+            </div>
+          `,
+        }),
+      });
+    } catch (notifyError) {
+      console.error('Failed to send notification email:', notifyError);
+      // Don't fail if notification fails
+    }
 
     return Response.json({
       success: true,
-      position: counter,
-      message: `You're #${counter} on the list!`,
+      position,
+      message: 'Check your email for confirmation!',
     });
 
   } catch (err) {
-    console.error('Waitlist error:', err);
+    console.error('Waitlist API error:', err);
     return Response.json({
       error: 'Something went wrong. Please try again.'
     }, { status: 500 });
   }
 }
 
-// Optional: View count
+// Optional: GET endpoint to check waitlist count
 export async function GET() {
   return Response.json({
     count: counter,
-    signups: waitlist.size,
+    signups: waitlistEmails.size,
   });
 }
